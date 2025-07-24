@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: monitoring
+Version: 0.1.0
+Summary: A package for data drift detection with multiple statistical tests
+Author: Your Name
+Requires-Python: >=3.7
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: pandas
+Requires-Dist: plotly
+Requires-Dist: kaleido
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

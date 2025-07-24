@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Drift Report - General Mills</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* General Mills Brand Colors */
+        :root {
+            --gm-primary-blue: #005BAA;
+            --gm-secondary-blue: #0073E6;
+            --gm-accent-yellow: #FDB813;
+            --gm-light-yellow: #FFF5CC;
+            --gm-light-gray: #F7F8FA;
+            --gm-medium-gray: #E5E7EB;
+            --gm-dark-gray: #374151;
+            --gm-text-dark: #1F2937;
+            --gm-success-green: #10B981;
+            --gm-warning-red: #EF4444;
+            --gm-success-light: #D1FAE5;
+            --gm-warning-light: #FEE2E2;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gm-light-gray);
+            color: var(--gm-text-dark);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--gm-primary-blue) 0%, var(--gm-secondary-blue) 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid var(--gm-accent-yellow);
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--gm-primary-blue);
+        }
+
+        .status-badge {
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-drift {
+            background-color: var(--gm-warning-light);
+            color: var(--gm-warning-red);
+            border: 2px solid var(--gm-warning-red);
+        }
+
+        .status-no-drift {
+            background-color: var(--gm-success-light);
+            color: var(--gm-success-green);
+            border: 2px solid var(--gm-success-green);
+        }
+
+        .overview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .overview-table th {
+            background: var(--gm-primary-blue);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .overview-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gm-medium-gray);
+            vertical-align: middle;
+        }
+
+        .overview-table tr:hover {
+            background-color: var(--gm-light-gray);
+        }
+
+        .column-section {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .column-header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--gm-accent-yellow);
+        }
+
+        .column-header.drift {
+            background: linear-gradient(135deg, var(--gm-warning-light) 0%, #FFEAEA 100%);
+            border-left: 6px solid var(--gm-warning-red);
+        }
+
+        .column-header.no-drift {
+            background: linear-gradient(135deg, var(--gm-success-light) 0%, #EAFAF1 100%);
+            border-left: 6px solid var(--gm-success-green);
+        }
+
+        .column-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--gm-primary-blue);
+        }
+
+        .column-status {
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+        }
+
+        .column-status.drift {
+            background-color: var(--gm-warning-red);
+            color: white;
+        }
+
+        .column-status.no-drift {
+            background-color: var(--gm-success-green);
+            color: white;
+        }
+
+        .tests-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+
+        .tests-table th {
+            background: var(--gm-primary-blue);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .tests-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gm-medium-gray);
+            vertical-align: top;
+        }
+
+        .tests-table tr:not(.chart-row):nth-child(even) {
+            background-color: #FAFBFC;
+        }
+
+        .test-name {
+            font-weight: 600;
+            color: var(--gm-primary-blue);
+            font-size: 1.05rem;
+        }
+
+        .test-result {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .test-result.drift {
+            background-color: var(--gm-warning-red);
+            color: white;
+        }
+
+        .test-result.no-drift {
+            background-color: var(--gm-success-green);
+            color: white;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: var(--gm-dark-gray);
+        }
+        
+        .chart-cell {
+            padding: 0 !important; /* Override default padding for smooth animation */
+        }
+        
+        .chart-content-wrapper {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .chart-content-wrapper.is-open {
+            max-height: 500px; /* A large value to allow content to expand */
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .chart-container {
+            background: #eef2f9;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gm-dark-gray);
+            font-style: italic;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .metric-card {
+            background: var(--gm-light-yellow);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--gm-accent-yellow);
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--gm-dark-gray);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value-large {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gm-primary-blue);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            background: var(--gm-primary-blue);
+            color: white;
+            margin-top: 3rem;
+        }
+
+        .expand-btn {
+            background: none;
+            border: 2px solid var(--gm-accent-yellow);
+            color: var(--gm-primary-blue);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .expand-btn:hover {
+            background: var(--gm-accent-yellow);
+            color: var(--gm-primary-blue);
+        }
+        .expand-btn.is-active {
+            background-color: var(--gm-accent-yellow);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Data Drift Analysis Report</h1>
+        <div class="subtitle">General Mills - Data Quality Monitoring</div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Section -->
+        <div class="summary-card">
+            <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+                <div style="flex: 1;">
+                    <button class="expand-btn" data-target="#data-summary-box">Compare Data Summaries</button>
+                    <div class="chart-content-wrapper" id="data-summary-box">
+                        <div class="chart-container">
+                            <table style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Column</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Type</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Mean</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Mean</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Std</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Std</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Min</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Min</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Max</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Max</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Mode</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Mode</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Unique</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Unique</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Ref Missing</th>
+                                        <th style="background:var(--gm-primary-blue);color:white;padding:0.5rem;">Cur Missing</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for col in result.data_summary.columns %}
+                                    <tr>
+                                        <td style="padding:0.5rem;">{{ col }}</td>
+                                        <td style="padding:0.5rem;">
+                                            {% if result.data_summary.ref[col].mean is not none %}Numeric{% else %}Categorical{% endif %}
+                                        </td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].mean if result.data_summary.ref[col].mean is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].mean if result.data_summary.cur[col].mean is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].std if result.data_summary.ref[col].std is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].std if result.data_summary.cur[col].std is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].min if result.data_summary.ref[col].min is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].min if result.data_summary.cur[col].min is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].max if result.data_summary.ref[col].max is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].max if result.data_summary.cur[col].max is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].mode if result.data_summary.ref[col].mode is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].mode if result.data_summary.cur[col].mode is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].unique if result.data_summary.ref[col].unique is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].unique if result.data_summary.cur[col].unique is not none else '-' }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.ref[col].missing }}</td>
+                                        <td style="padding:0.5rem;">{{ result.data_summary.cur[col].missing }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-header">
+                <h2 class="summary-title">Executive Summary</h2>
+                <div class="status-badge {{ 'status-drift' if result.is_drift else 'status-no-drift' }}">
+                    {% if result.is_drift %}⚠️ Drift Detected{% else %}✅ No Drift Detected{% endif %}
+                </div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Total Columns Analyzed</div>
+                    <div class="metric-value-large">{{ result.details|length }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Columns with Drift</div>
+                    <div class="metric-value-large">{{ result.details.values()|selectattr('is_drift')|list|length }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Drift Detection Rate</div>
+                    <div class="metric-value-large">
+                        {{ "%.1f"|format((result.details.values()|selectattr('is_drift')|list|length / result.details|length * 100) if result.details else 0) }}%
+                    </div>
+                </div>
+            </div>
+
+            <table class="overview-table">
+                <thead>
+                    <tr>
+                        <th>Column Name</th>
+                        <th>Drift Status</th>
+                        <th>Tests Performed</th>
+                        <th>Tests Detected Drift</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for col, details in result.details.items() %}
+                    <tr>
+                        <td><strong>{{ col }}</strong></td>
+                        <td>
+                            <span class="test-result {{ 'drift' if details.is_drift else 'no-drift' }}">
+                                {{ 'Drift' if details.is_drift else 'No Drift' }}
+                            </span>
+                        </td>
+                        <td class="metric-value">{{ details.tests|length }}</td>
+                        <td class="metric-value">{{ details.tests.values()|selectattr('drift')|list|length }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Detailed Column Analysis -->
+        <h2 style="color: var(--gm-primary-blue); font-size: 1.8rem; margin-bottom: 1.5rem; font-weight: 600;">
+            📊 Detailed Column Analysis
+        </h2>
+
+        {% for col, details in result.details.items() %}
+        <div class="column-section">
+            <div class="column-header {{ 'drift' if details.is_drift else 'no-drift' }}">
+                <div class="column-name">{{ col }}</div>
+                <div class="column-status {{ 'drift' if details.is_drift else 'no-drift' }}">
+                    {{ 'Drift Detected' if details.is_drift else 'No Drift' }}
+                </div>
+            </div>
+
+            <table class="tests-table">
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Result</th>
+                        <th>Threshold</th>
+                        <th>Weight</th>
+                        <th>Key Metrics</th>
+                        <th>Visualization</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test_name, test_info in details.tests.items() %}
+                    <!-- Row 1: Test Details -->
+                    <tr>
+                        <td class="test-name">{{ test_name.replace('_', ' ').title() }}</td>
+                        <td>
+                            <span class="test-result {{ 'drift' if test_info.drift else 'no-drift' }}">
+                                {{ 'Drift Detected' if test_info.drift else 'No Drift' }}
+                            </span>
+                        </td>
+                        <td class="metric-value">{{ test_info.threshold }}</td>
+                        <td class="metric-value">{{ test_info.weight }}</td>
+                        <td>
+                            {% if test_info.result %}
+                                {% for key, value in test_info.result.items() %}
+                                    {% if key not in ['drift', 'test_passed', 'details'] and value is not none %}
+                                    <div style="margin-bottom: 0.25rem;">
+                                        <span style="color: var(--gm-dark-gray); font-size: 0.85rem;">{{ key.replace('_', ' ').title() }}:</span>
+                                        <span class="metric-value">
+                                            {% if value is number %}{{ "%.4f"|format(value) }}{% else %}{{ value }}{% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <em style="color: var(--gm-dark-gray);">No metrics available</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if test_info.plot_html and 'Plot error' not in test_info.plot_html %}
+                                {% set chart_row_id = 'chart-row-' ~ col|replace(' ', '-')|replace("'", "")|replace('"', "") ~ '-' ~ loop.index %}
+                                <button class="expand-btn" data-target="#{{ chart_row_id }}">
+                                    View Chart
+                                </button>
+                            {% else %}
+                                <em style="color: var(--gm-dark-gray);">No chart available</em>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <!-- Row 2: Hidden Chart Container with smooth animation wrapper -->
+                    {% if test_info.plot_html and 'Plot error' not in test_info.plot_html %}
+                        {% set chart_row_id = 'chart-row-' ~ col|replace(' ', '-')|replace("'", "")|replace('"', "") ~ '-' ~ loop.index %}
+                        <tr class="chart-row">
+                            <td colspan="6" class="chart-cell">
+                                <div class="chart-content-wrapper" id="{{ chart_row_id }}">
+                                    <div class="chart-container">
+                                        {{ test_info.plot_html | safe }}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="no-data">
+            <h3>No drift analysis data available</h3>
+            <p>No columns were analyzed for data drift.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        <p>© 2024 General Mills, Inc. | Data Quality Monitoring System</p>
+        <p style="opacity: 0.8; margin-top: 0.5rem;">Report generated on {{ generation_time }}</p>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('click', function(event) {
+            const button = event.target.closest('.expand-btn');
+            if (!button) return;
+
+            const targetSelector = button.dataset.target;
+            const chartWrapper = document.querySelector(targetSelector);
+            if (!chartWrapper) return;
+
+            button.classList.toggle('is-active');
+            const isOpen = chartWrapper.classList.toggle('is-open');
+
+            if (isOpen) {
+                button.textContent = 'Hide Chart';
+                // Use scrollHeight to set the max-height for a perfect fit animation
+                chartWrapper.style.maxHeight = chartWrapper.scrollHeight + 'px';
+
+                // A small timeout allows the CSS transition to start before resizing the plot
+                setTimeout(() => {
+                    const plot = chartWrapper.querySelector('.js-plotly-plot');
+                    if (plot) {
+                        Plotly.Plots.resize(plot);
+                    }
+                }, 100); 
+            } else {
+                button.textContent = 'View Chart';
+                chartWrapper.style.maxHeight = '0';
+            }
+        });
+    });
+    </script>
+</body>
+</html>

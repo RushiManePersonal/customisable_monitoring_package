@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Drift Report</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f8fa; color: #1F2937; }
+        .header { background: #005BAA; color: white; padding: 2rem 0; text-align: center; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .summary-card { background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 4px solid #FDB813; }
+        .summary-title { font-size: 1.8rem; font-weight: 600; color: #005BAA; }
+        .metrics-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metrics-table th { background: #005BAA; color: white; padding: 1rem; text-align: left; font-weight: 600; }
+        .metrics-table td { padding: 1rem; border-bottom: 1px solid #E5E7EB; }
+        .metrics-table tr:hover { background-color: #F7F8FA; }
+        .plot-section { background: white; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 2rem; }
+        .footer { text-align: center; padding: 2rem; background: #005BAA; color: white; margin-top: 3rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Prediction Drift Report</h1>
+        <div class="subtitle">Model Prediction Stability Over Time</div>
+    </div>
+    <div class="container">
+        <div class="summary-card">
+            <h2 class="summary-title">Summary of Prediction Drift</h2>
+            {% if result.overlap_periods and result.overlap_periods|length > 0 %}
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>MAE</th>
+                        <th>RMSE</th>
+                        <th>MAPE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for period in result.overlap_periods %}
+                    <tr>
+                        <td>{{ period }}</td>
+                        <td>{% if result.drift_metrics[period]['mae'] is number %}{{ '%.4f'|format(result.drift_metrics[period]['mae']) }}{% else %}{{ result.drift_metrics[period]['mae'] }}{% endif %}</td>
+                        <td>{% if result.drift_metrics[period]['rmse'] is number %}{{ '%.4f'|format(result.drift_metrics[period]['rmse']) }}{% else %}{{ result.drift_metrics[period]['rmse'] }}{% endif %}</td>
+                        <td>{% if result.drift_metrics[period]['mape'] is number %}{{ '%.4f'|format(result.drift_metrics[period]['mape']) }}{% else %}{{ result.drift_metrics[period]['mape'] if result.drift_metrics[period]['mape'] is defined else '-' }}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                <tr style="font-weight:bold;background:#F3F4F6;">
+                    <td>Total</td>
+                    <td>{% if result.overall_mae is defined %}{{ '%.4f'|format(result.overall_mae) }}{% else %}-{% endif %}</td>
+                    <td>{% if result.overall_rmse is defined %}{{ '%.4f'|format(result.overall_rmse) }}{% else %}-{% endif %}</td>
+                    <td>{% if result.overall_mape is defined %}{{ '%.4f'|format(result.overall_mape) }}{% else %}-{% endif %}</td>
+                </tr>
+                </tbody>
+            </table>
+            {% else %}
+            <div style="color:#EF4444; font-weight:600; padding:1rem;">No overlapping periods found between the two prediction files.</div>
+            {% endif %}
+        </div>
+        
+        <!-- ================= NEW PLOT SECTION ================= -->
+        <div class="plot-section">
+            <h2 class="summary-title">Prediction Comparison Plot</h2>
+            <div style="margin-bottom:2rem;">
+                <div id="plot-combined" style="height:400px;"></div>
+                <script type="text/javascript">
+                    (function() {
+                        var periods = JSON.parse('{{ result.overlap_periods | tojson | safe }}');
+                        var predA = JSON.parse('{{ result.combined_pred_a | tojson | safe }}');
+                        var predB = JSON.parse('{{ result.combined_pred_b | tojson | safe }}');
+                        var traceA = {
+                            x: periods,
+                            y: predA,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: 'Model A',
+                            line: {color: '#005BAA'}
+                        };
+                        var traceB = {
+                            x: periods,
+                            y: predB,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: 'Model B',
+                            line: {color: '#FDB813'}
+                        };
+                        var layout = {
+                            title: 'Predictions Comparison Over Time',
+                            xaxis: {title: 'Period'},
+                            yaxis: {title: 'Prediction'},
+                            legend: {x: 0, y: 1.1, orientation: 'h'}
+                        };
+                        Plotly.newPlot('plot-combined', [traceA, traceB], layout, {responsive: true});
+                    })();
+                </script>
+            </div>
+
+            <!-- Expandable individual prediction plots -->
+            <!-- Individual prediction plots removed as requested -->
+        </div>
+    </div>
+    <div class="footer">
+        <p>© 2024 General Mills, Inc. | Prediction Drift Monitoring</p>
+        <p style="opacity: 0.8; margin-top: 0.5rem;">Report generated on {{ generation_time }}</p>
+    </div>
+</body>
+</html>

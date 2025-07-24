@@ -1,0 +1,5 @@
+# This file is managed by Poetry. To add dependencies, use the command:
+# poetry add <package-name>
+#
+# Example:
+# poetry add numpy pandas scipy matplotlib scikit-learn seaborn
